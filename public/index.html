@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Sensor Data</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    canvas {
+      width: 80%; /* 80% of the viewport width */
+      height: 400px; /* Fixed height for all charts */
+      display: block;
+      margin: 20px auto;
+    }
+    table {
+      margin: 20px auto;
+      width: 80%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Real-Time Sensor Data</h1>
+
+  <canvas id="temperatureChart"></canvas>
+  <canvas id="humidityChart"></canvas>
+  <canvas id="heatIndexChart"></canvas>
+
+  <h2>Historical Data - ESP32 Device 1</h2>
+  <table id="device1Table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Temperature</th>
+        <th>Humidity</th>
+        <th>Heat Index</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Historical Data - ESP32 Device 2</h2>
+  <table id="device2Table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Temperature</th>
+        <th>Humidity</th>
+        <th>Heat Index</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const temperatureChartCtx = document.getElementById('temperatureChart').getContext('2d');
+    const humidityChartCtx = document.getElementById('humidityChart').getContext('2d');
+    const heatIndexChartCtx = document.getElementById('heatIndexChart').getContext('2d');
+
+    const temperatureChart = new Chart(temperatureChartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'ESP32 Device 1',
+            data: [],
+            borderColor: 'blue',
+            fill: false
+          },
+          {
+            label: 'ESP32 Device 2',
+            data: [],
+            borderColor: 'red',
+            fill: false
+          }
+        ]
+      }
+    });
+
+    const humidityChart = new Chart(humidityChartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'ESP32 Device 1',
+            data: [],
+            borderColor: 'blue',
+            fill: false
+          },
+          {
+            label: 'ESP32 Device 2',
+            data: [],
+            borderColor: 'red',
+            fill: false
+          }
+        ]
+      }
+    });
+
+    const heatIndexChart = new Chart(heatIndexChartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'ESP32 Device 1',
+            data: [],
+            borderColor: 'blue',
+            fill: false
+          },
+          {
+            label: 'ESP32 Device 2',
+            data: [],
+            borderColor: 'red',
+            fill: false
+          }
+        ]
+      }
+    });
+
+    const ws = new WebSocket('ws://192.168.58.82:8080');  // Replace with your server IP
+
+    ws.onopen = function () {
+      console.log("WebSocket connection established.");
+    };
+
+    ws.onmessage = function (event) {
+      // Check if the data is a Blob and convert it to text
+      if (event.data instanceof Blob) {
+        event.data.text().then(function (text) {
+          const data = JSON.parse(text);
+          handleIncomingData(data);  // Handle the parsed data
+        }).catch(function (error) {
+          console.error("Error parsing WebSocket Blob data: ", error);
+        });
+      } else {
+        // If the data is already text, parse it directly
+        const data = JSON.parse(event.data);
+        handleIncomingData(data);  // Handle the parsed data
+      }
+    };
+
+    ws.onerror = function (error) {
+      console.error("WebSocket Error: ", error);
+    };
+
+    ws.onclose = function () {
+      console.log("WebSocket connection closed.");
+    };
+
+    // Function to handle incoming data and update charts/tables
+    function handleIncomingData(data) {
+      console.log("Received data: ", data);  // Log the received data
+
+      const { deviceId, temperature, humidity, heat_index } = data;
+      const currentTime = new Date().toLocaleTimeString();
+
+      if (deviceId === 'ESP32_Location1') {
+        temperatureChart.data.labels.push(currentTime);
+        temperatureChart.data.datasets[0].data.push(temperature);
+        humidityChart.data.labels.push(currentTime);
+        humidityChart.data.datasets[0].data.push(humidity);
+        heatIndexChart.data.labels.push(currentTime);
+        heatIndexChart.data.datasets[0].data.push(heat_index);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${currentTime}</td><td>${temperature}</td><td>${humidity}</td><td>${heat_index}</td>`;
+        document.getElementById('device1Table').querySelector('tbody').appendChild(row);
+      } else if (deviceId === 'ESP32_Location2') {
+        temperatureChart.data.datasets[1].data.push(temperature);
+        humidityChart.data.datasets[1].data.push(humidity);
+        heatIndexChart.data.datasets[1].data.push(heat_index);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${currentTime}</td><td>${temperature}</td><td>${humidity}</td><td>${heat_index}</td>`;
+        document.getElementById('device2Table').querySelector('tbody').appendChild(row);
+      }
+
+      temperatureChart.update();
+      humidityChart.update();
+      heatIndexChart.update();
+    }
+  </script>
+</body>
+</html>
